@@ -44,6 +44,7 @@ interface PersonaConfirmProps {
     importance: number;
   }>;
   autonomyLevel: "OBSERVER" | "ADVISOR" | "COPILOT" | "AUTONOMOUS";
+  mode?: "onboarding" | "profile";
 }
 
 const AUTONOMY_LABELS: Record<string, string> = {
@@ -59,6 +60,7 @@ export function PersonaConfirm({
   goals,
   priorities,
   autonomyLevel,
+  mode = "onboarding",
 }: PersonaConfirmProps) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -81,15 +83,19 @@ export function PersonaConfirm({
 
   const energizers = energyDrivers.filter((d) => d.driverType === "ENERGIZER");
   const drainers = energyDrivers.filter((d) => d.driverType === "DRAINER");
+  const isProfileView = mode === "profile";
 
   return (
-    <main className="mx-auto max-w-2xl space-y-6 p-6">
+    <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex flex-col items-center gap-2 text-center">
         <Sparkles className="size-8 text-primary" />
-        <h1 className="text-2xl font-bold tracking-tight">Your Persona Card</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {isProfileView ? "My Profile" : "Your Persona Card"}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Review what Alter learned about you. Confirm to start using your
-          dashboard, or revise by continuing the conversation.
+          {isProfileView
+            ? "Review the persona Alter is using to interpret your energy, goals, and boundaries."
+            : "Review what Alter learned about you. Confirm to start using your dashboard, or revise by continuing the conversation."}
         </p>
       </div>
 
@@ -229,31 +235,55 @@ export function PersonaConfirm({
 
       {/* Actions */}
       <div className="flex gap-3 pb-8">
-        <Button
-          onClick={handleConfirm}
-          disabled={confirming}
-          size="lg"
-          className="flex-1"
-        >
-          {confirming ? (
-            "Confirming..."
-          ) : (
-            <>
+        {isProfileView ? (
+          <>
+            <Button
+              onClick={() => router.push("/dashboard")}
+              size="lg"
+              className="flex-1"
+            >
               <Check className="size-4" />
-              Looks good — let&apos;s go
-            </>
-          )}
-        </Button>
-        <Button
-          onClick={handleRevise}
-          variant="outline"
-          size="lg"
-          className="flex-1"
-        >
-          <RotateCcw className="size-4" />
-          Revise
-        </Button>
+              Back to dashboard
+            </Button>
+            <Button
+              onClick={handleRevise}
+              variant="outline"
+              size="lg"
+              className="flex-1"
+            >
+              <RotateCcw className="size-4" />
+              Retake onboarding
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={handleConfirm}
+              disabled={confirming}
+              size="lg"
+              className="flex-1"
+            >
+              {confirming ? (
+                "Confirming..."
+              ) : (
+                <>
+                  <Check className="size-4" />
+                  Looks good — let&apos;s go
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={handleRevise}
+              variant="outline"
+              size="lg"
+              className="flex-1"
+            >
+              <RotateCcw className="size-4" />
+              Revise
+            </Button>
+          </>
+        )}
       </div>
-    </main>
+    </div>
   );
 }

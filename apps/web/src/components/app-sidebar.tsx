@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Lightbulb,
+  UserRound,
   Settings,
   Sparkles,
   Menu,
@@ -27,6 +28,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/suggestions", label: "Suggestions", icon: Lightbulb },
+  { href: "/profile", label: "Profile", icon: UserRound },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
