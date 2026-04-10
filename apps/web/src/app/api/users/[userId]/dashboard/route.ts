@@ -78,6 +78,7 @@ export async function GET(
     conflicts,
     suggestions,
     persistedSuggestions,
+    calendarEvents,
     autonomy: user.autonomySetting,
   });
 }
