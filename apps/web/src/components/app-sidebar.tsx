@@ -8,6 +8,7 @@ import {
   Settings,
   Sparkles,
   Menu,
+  Box,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/suggestions", label: "Suggestions", icon: Lightbulb },
+  { href: "/room", label: "Room", icon: Box },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
