@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { DevProfileSwitcher } from "@/components/dashboard/dev-profile-switcher";
+import { ProfileBrief } from "@/components/dashboard/profile-brief";
 import {
   MOCK_PROFILE_COOKIE,
   getMockProfile,
@@ -25,11 +26,20 @@ export default async function DashboardPage() {
   // MVP: single-user demo mode — get the first user
   const user = activeMockProfile
     ? {
+        name: activeMockProfile.user.name,
         id: activeMockProfile.user.id,
         personaCard: activeMockProfile.personaCard,
+        energyDrivers: activeMockProfile.energyDrivers,
+        goals: activeMockProfile.goals,
+        autonomySetting: activeMockProfile.autonomySetting,
       }
     : await prisma.user.findFirst({
-        include: { personaCard: true },
+        include: {
+          personaCard: true,
+          energyDrivers: true,
+          goals: true,
+          autonomySetting: true,
+        },
       });
 
   const header = (
@@ -95,6 +105,23 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       {header}
+      <ProfileBrief
+        name={user.name}
+        archetype={activeMockProfile?.label ?? null}
+        summary={user.personaCard.summary}
+        communicationStyle={user.personaCard.communicationStyle}
+        boundaryNotes={user.personaCard.boundaryNotes}
+        autonomyLevel={user.autonomySetting?.level ?? "OBSERVER"}
+        energizer={
+          user.energyDrivers.find((driver) => driver.driverType === "ENERGIZER")
+            ?.label ?? null
+        }
+        drainer={
+          user.energyDrivers.find((driver) => driver.driverType === "DRAINER")
+            ?.label ?? null
+        }
+        goals={user.goals.slice(0, 3).map((goal) => goal.title)}
+      />
       <DashboardShell userId={user.id} />
     </div>
   );

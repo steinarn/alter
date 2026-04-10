@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  getMockProfileSummaries,
+  isMockProfilesEnabled,
+} from "@/mock/personas";
 
 const prisma = new PrismaClient();
 
@@ -46,6 +50,8 @@ export default async function Home() {
   });
 
   const hasCompletedOnboarding = !!user?.personaCard?.confirmedAt;
+  const mockProfilesEnabled = isMockProfilesEnabled();
+  const demoProfiles = mockProfilesEnabled ? getMockProfileSummaries() : [];
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-12 p-8">
@@ -74,7 +80,7 @@ export default async function Home() {
         ))}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-wrap justify-center gap-4">
         {hasCompletedOnboarding ? (
           <Button asChild size="lg">
             <Link href="/dashboard">
@@ -87,6 +93,13 @@ export default async function Home() {
             <Link href="/onboarding">
               Get started
               <ArrowRight className="ml-1 size-4" />
+            </Link>
+          </Button>
+        )}
+        {mockProfilesEnabled && (
+          <Button asChild variant="secondary" size="lg">
+            <Link href="/dashboard">
+              Watch Demo Personas
             </Link>
           </Button>
         )}
@@ -103,6 +116,33 @@ export default async function Home() {
           </Button>
         )}
       </div>
+
+      {mockProfilesEnabled && (
+        <Card className="w-full max-w-3xl border-dashed bg-muted/25">
+          <CardContent className="space-y-3 pt-6 text-center">
+            <div>
+              <p className="text-sm font-semibold">Demo Mode</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Show how Alter adapts across different people, boundaries, and
+                autonomy levels without redoing onboarding every time.
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {demoProfiles.map((profile) => (
+                <span
+                  key={profile.id}
+                  className="rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground"
+                >
+                  {profile.label}
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Open the dashboard, then use <span className="font-medium text-foreground">Switch User</span> to swap personas live.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {hasCompletedOnboarding && (
         <p className="max-w-lg text-center text-sm text-muted-foreground">

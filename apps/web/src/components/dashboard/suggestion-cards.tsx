@@ -35,12 +35,47 @@ interface FilteredSuggestion {
 
 const PRESENTATION_META: Record<
   Presentation,
-  { label: string; icon: React.ComponentType<{ className?: string }>; color: string }
+  {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    cardClass: string;
+    bodyClass: string;
+    helper: string;
+  }
 > = {
-  reflection: { label: "Reflection", icon: Eye, color: "text-blue-500" },
-  action: { label: "Suggestion", icon: MessageSquare, color: "text-amber-500" },
-  draft: { label: "Draft", icon: FileEdit, color: "text-orange-500" },
-  notification: { label: "Acted", icon: Zap, color: "text-emerald-500" },
+  reflection: {
+    label: "Reflection",
+    icon: Eye,
+    color: "text-blue-600",
+    cardClass: "border-blue-200 bg-blue-50/50",
+    bodyClass: "bg-blue-100/70 text-blue-900",
+    helper: "Observer mode: Alter is surfacing a pattern for you to consider.",
+  },
+  action: {
+    label: "Needs Approval",
+    icon: MessageSquare,
+    color: "text-amber-600",
+    cardClass: "border-amber-200 bg-amber-50/60",
+    bodyClass: "bg-amber-100/70 text-amber-900",
+    helper: "Advisor mode: Alter suggests the move, but you stay in control.",
+  },
+  draft: {
+    label: "Ready To Confirm",
+    icon: FileEdit,
+    color: "text-orange-600",
+    cardClass: "border-orange-200 bg-orange-50/60",
+    bodyClass: "bg-orange-100/70 text-orange-900",
+    helper: "Co-pilot mode: Alter has prepared the action for your confirmation.",
+  },
+  notification: {
+    label: "Already Acted",
+    icon: Zap,
+    color: "text-emerald-600",
+    cardClass: "border-emerald-200 bg-emerald-50/60",
+    bodyClass: "bg-emerald-100/70 text-emerald-900",
+    helper: "Autonomous mode: Alter already handled this within your rules.",
+  },
 };
 
 function SuggestionCard({
@@ -56,7 +91,7 @@ function SuggestionCard({
   const Icon = meta.icon;
 
   return (
-    <Card>
+    <Card className={meta.cardClass}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -72,9 +107,25 @@ function SuggestionCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div
+          className={cn(
+            "rounded-md px-2.5 py-2 text-xs font-medium",
+            meta.bodyClass
+          )}
+        >
+          {meta.helper}
+        </div>
         <p className="text-xs text-muted-foreground">
           <span className="font-medium">Why:</span> {suggestion.reason}
         </p>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline" className="text-[10px]">
+            {suggestion.mode}
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">
+            Needs {suggestion.autonomyLevelRequired.toLowerCase()}
+          </Badge>
+        </div>
 
         {suggestion.presentation === "action" && suggestion.showAcceptDecline && (
           <div className="flex gap-2">
