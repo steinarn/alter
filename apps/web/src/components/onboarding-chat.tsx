@@ -45,6 +45,10 @@ export function OnboardingChat() {
       },
     });
 
+  const lastMessage = messages[messages.length - 1];
+  const showLoadingBubble =
+    isLoading && (!lastMessage || lastMessage.role !== "assistant");
+
   // Compute progress
   const userMessages = messages.filter((m) => m.role === "user").length;
   const progress = Math.min((userMessages / 7) * 100, 100);
@@ -164,7 +168,7 @@ export function OnboardingChat() {
               </div>
             </div>
           ))}
-          {isLoading && (
+          {showLoadingBubble && (
             <div className="flex gap-3">
               <Avatar className="size-8 shrink-0">
                 <AvatarFallback className="bg-muted text-xs">
