@@ -50,6 +50,15 @@ interface DashboardData {
     presentation: "reflection" | "action" | "draft" | "notification";
     showAcceptDecline: boolean;
   }>;
+  persistedSuggestions: Array<{
+    id: string;
+    title: string;
+    description: string;
+    reason: string;
+    mode: string;
+    status: string;
+    autonomyLevelRequired: string;
+  }>;
   calendarEvents: Array<{
     id: string;
     title: string;
@@ -142,6 +151,29 @@ export function DashboardShell({ userId }: { userId: string }) {
     }
   }, [userId, fetchDashboard]);
 
+  const handleSuggestionAction = useCallback(
+    async (suggestionId: string, status: "ACCEPTED" | "DECLINED") => {
+      const res = await fetch(`/api/suggestions/${suggestionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        // Remove from local state so it disappears from the list
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            persistedSuggestions: prev.persistedSuggestions.filter(
+              (s) => s.id !== suggestionId
+            ),
+          };
+        });
+      }
+    },
+    []
+  );
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -164,6 +196,36 @@ export function DashboardShell({ userId }: { userId: string }) {
       </div>
     );
   }
+
+  // Merge domain-computed suggestions with persisted ones (which have IDs for actions).
+  // Persisted suggestions take priority — match by title to avoid duplicates.
+  const persistedTitles = new Set(
+    data.persistedSuggestions.map((s) => s.title)
+  );
+
+  const persistedAsSuggestions = data.persistedSuggestions.map((s) => {
+    // Find matching domain suggestion for presentation info
+    const domainMatch = data.suggestions.find(
+      (ds) => ds.title === s.title
+    );
+    return {
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      reason: s.reason,
+      mode: s.mode as "PERSONAL" | "PROFESSIONAL",
+      autonomyLevelRequired: s.autonomyLevelRequired,
+      priority: domainMatch?.priority ?? 5,
+      presentation: domainMatch?.presentation ?? ("action" as const),
+      showAcceptDecline: domainMatch?.showAcceptDecline ?? true,
+    };
+  });
+
+  const domainOnly = data.suggestions.filter(
+    (s) => !persistedTitles.has(s.title)
+  );
+
+  const mergedSuggestions = [...persistedAsSuggestions, ...domainOnly];
 
   return (
     <div className="space-y-6">
@@ -206,7 +268,12 @@ export function DashboardShell({ userId }: { userId: string }) {
           <h2 className="text-lg font-semibold">Suggestions</h2>
           <ModeToggle />
         </div>
-        <SuggestionCards suggestions={data.suggestions} mode={mode} />
+        <SuggestionCards
+          suggestions={mergedSuggestions}
+          mode={mode}
+          onAccept={(id) => handleSuggestionAction(id, "ACCEPTED")}
+          onDecline={(id) => handleSuggestionAction(id, "DECLINED")}
+        />
       </div>
 
       {/* Calendar preview */}

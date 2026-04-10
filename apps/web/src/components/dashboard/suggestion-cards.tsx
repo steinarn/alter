@@ -22,6 +22,7 @@ import {
 type Presentation = "reflection" | "action" | "draft" | "notification";
 
 interface FilteredSuggestion {
+  id?: string;
   title: string;
   description: string;
   reason: string;
@@ -42,7 +43,15 @@ const PRESENTATION_META: Record<
   notification: { label: "Acted", icon: Zap, color: "text-emerald-500" },
 };
 
-function SuggestionCard({ suggestion }: { suggestion: FilteredSuggestion }) {
+function SuggestionCard({
+  suggestion,
+  onAccept,
+  onDecline,
+}: {
+  suggestion: FilteredSuggestion;
+  onAccept?: (id: string) => void;
+  onDecline?: (id: string) => void;
+}) {
   const meta = PRESENTATION_META[suggestion.presentation];
   const Icon = meta.icon;
 
@@ -69,11 +78,22 @@ function SuggestionCard({ suggestion }: { suggestion: FilteredSuggestion }) {
 
         {suggestion.presentation === "action" && suggestion.showAcceptDecline && (
           <div className="flex gap-2">
-            <Button size="sm" className="h-7 gap-1 text-xs">
+            <Button
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => suggestion.id && onAccept?.(suggestion.id)}
+              disabled={!suggestion.id}
+            >
               <CheckCircle2 className="size-3" />
               Accept
             </Button>
-            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs"
+              onClick={() => suggestion.id && onDecline?.(suggestion.id)}
+              disabled={!suggestion.id}
+            >
               <XCircle className="size-3" />
               Decline
             </Button>
@@ -82,13 +102,24 @@ function SuggestionCard({ suggestion }: { suggestion: FilteredSuggestion }) {
 
         {suggestion.presentation === "draft" && suggestion.showAcceptDecline && (
           <div className="flex gap-2">
-            <Button size="sm" className="h-7 gap-1 text-xs">
+            <Button
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={() => suggestion.id && onAccept?.(suggestion.id)}
+              disabled={!suggestion.id}
+            >
               <CheckCircle2 className="size-3" />
               Confirm
             </Button>
-            <Button size="sm" variant="outline" className="h-7 gap-1 text-xs">
-              <FileEdit className="size-3" />
-              Edit
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs"
+              onClick={() => suggestion.id && onDecline?.(suggestion.id)}
+              disabled={!suggestion.id}
+            >
+              <XCircle className="size-3" />
+              Decline
             </Button>
           </div>
         )}
@@ -107,9 +138,13 @@ function SuggestionCard({ suggestion }: { suggestion: FilteredSuggestion }) {
 export function SuggestionCards({
   suggestions,
   mode,
+  onAccept,
+  onDecline,
 }: {
   suggestions: FilteredSuggestion[];
   mode: "PERSONAL" | "PROFESSIONAL";
+  onAccept?: (id: string) => void;
+  onDecline?: (id: string) => void;
 }) {
   const filtered = suggestions.filter((s) => s.mode === mode);
 
@@ -128,7 +163,12 @@ export function SuggestionCards({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {filtered.map((s, i) => (
-        <SuggestionCard key={i} suggestion={s} />
+        <SuggestionCard
+          key={s.id ?? i}
+          suggestion={s}
+          onAccept={onAccept}
+          onDecline={onDecline}
+        />
       ))}
     </div>
   );
