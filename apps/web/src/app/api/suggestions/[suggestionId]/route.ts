@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@alter/db";
 import { updateSuggestionSchema } from "@/lib/schemas/suggestion-schemas";
+import {
+  findMockSuggestionById,
+  isMockSuggestionId,
+} from "@/mock/personas";
 
 const prisma = new PrismaClient();
 
@@ -17,6 +21,14 @@ export async function PATCH(
       { error: "Invalid request", details: parsed.error.flatten() },
       { status: 400 }
     );
+  }
+
+  if (isMockSuggestionId(suggestionId)) {
+    const existing = findMockSuggestionById(suggestionId);
+    return NextResponse.json({
+      ...(existing ?? { id: suggestionId }),
+      status: parsed.data.status,
+    });
   }
 
   const suggestion = await prisma.suggestion.findUnique({
@@ -43,6 +55,18 @@ export async function GET(
   { params }: { params: Promise<{ suggestionId: string }> }
 ) {
   const { suggestionId } = await params;
+
+  if (isMockSuggestionId(suggestionId)) {
+    const suggestion = findMockSuggestionById(suggestionId);
+    if (!suggestion) {
+      return NextResponse.json(
+        { error: "Suggestion not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(suggestion);
+  }
 
   const suggestion = await prisma.suggestion.findUnique({
     where: { id: suggestionId },

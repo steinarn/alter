@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient, Prisma } from "@alter/db";
 import { generateSuggestions } from "@alter/ai";
 import { z } from "zod";
+import {
+  generateMockSuggestions,
+  getMockProfileByUserId,
+} from "@/mock/personas";
 
 const prisma = new PrismaClient();
 
@@ -22,6 +26,17 @@ export async function POST(
       { error: "Invalid request", details: parsed.error.flatten() },
       { status: 400 }
     );
+  }
+
+  const mockProfile = getMockProfileByUserId(userId);
+
+  if (mockProfile) {
+    const suggestions = generateMockSuggestions(mockProfile, parsed.data.mode);
+    return NextResponse.json({
+      generated: suggestions.length,
+      suggestions,
+      autonomyLevel: mockProfile.autonomySetting.level,
+    });
   }
 
   const user = await prisma.user.findUnique({

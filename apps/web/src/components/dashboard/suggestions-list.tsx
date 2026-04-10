@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -128,6 +128,10 @@ export function SuggestionsList({
     useState<SuggestionItem[]>(initialSuggestions);
   const [generating, setGenerating] = useState(false);
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "ACCEPTED" | "DECLINED" | "ACTED">("ALL");
+
+  useEffect(() => {
+    setSuggestions(initialSuggestions);
+  }, [initialSuggestions]);
 
   async function handleStatusChange(
     id: string,

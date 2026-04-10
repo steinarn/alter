@@ -7,6 +7,7 @@ import {
   generateSuggestionCriteria,
   filterSuggestionsByAutonomy,
 } from "@alter/domain";
+import { buildMockDashboardData, getMockProfileByUserId } from "@/mock/personas";
 
 const prisma = new PrismaClient();
 
@@ -15,6 +16,11 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   const { userId } = await params;
+  const mockProfile = getMockProfileByUserId(userId);
+
+  if (mockProfile) {
+    return NextResponse.json(buildMockDashboardData(mockProfile));
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
