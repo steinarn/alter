@@ -1,0 +1,7 @@
+{
+  "servers": {
+    "next-devtools-mcp": {
+      "url": "http://localhost:3000/_next/mcp"
+    }
+  }
+}

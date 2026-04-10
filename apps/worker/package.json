@@ -1,0 +1,25 @@
+{
+  "name": "@alter/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.40.0",
+    "ioredis": "^5.6.0",
+    "@alter/db": "workspace:*",
+    "@alter/domain": "workspace:*",
+    "@alter/ai": "workspace:*"
+  },
+  "devDependencies": {
+    "@alter/config-typescript": "workspace:*",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.2",
+    "@types/node": "^22.14.0"
+  }
+}

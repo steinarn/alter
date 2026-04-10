@@ -1,0 +1,25 @@
+{
+  "name": "@alter/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "seed": "tsx prisma/seed.ts",
+    "studio": "prisma studio",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.6.0"
+  },
+  "devDependencies": {
+    "@alter/config-typescript": "workspace:*",
+    "prisma": "^6.6.0",
+    "tsx": "^4.19.0",
+    "typescript": "^6.0.2"
+  }
+}
