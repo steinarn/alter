@@ -92,10 +92,24 @@ export default async function Home() {
         )}
         {hasCompletedOnboarding && (
           <Button asChild variant="outline" size="lg">
+            <Link href="/onboarding">
+              Start New Onboarding
+            </Link>
+          </Button>
+        )}
+        {hasCompletedOnboarding && (
+          <Button asChild variant="outline" size="lg">
             <Link href="/settings">Settings</Link>
           </Button>
         )}
       </div>
+
+      {hasCompletedOnboarding && (
+        <p className="max-w-lg text-center text-sm text-muted-foreground">
+          Running onboarding again will replace the current persona card with a
+          newly generated one.
+        </p>
+      )}
     </main>
   );
 }
