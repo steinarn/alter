@@ -5,7 +5,6 @@ import { useChat } from "@ai-sdk/react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Send, Loader2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -66,7 +65,7 @@ export function OnboardingChat() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, showLoadingBubble]);
 
   // Build conversation history for persona generation
   function getConversationHistory() {
@@ -117,9 +116,9 @@ export function OnboardingChat() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] max-w-2xl mx-auto flex-col gap-4 p-4">
+    <div className="mx-auto flex h-[calc(100dvh-2rem)] max-w-3xl flex-col gap-4 overflow-hidden p-4">
       {/* Progress bar */}
-      <div className="flex flex-col gap-2">
+      <div className="shrink-0 flex flex-col gap-2">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">{STAGE_LABELS[currentStage]}</span>
           <span className="text-muted-foreground">
@@ -130,7 +129,10 @@ export function OnboardingChat() {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1" ref={scrollRef}>
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 sm:px-4"
+      >
         <div className="flex flex-col gap-4 pb-4">
           {messages.map((message) => (
             <div
@@ -158,7 +160,7 @@ export function OnboardingChat() {
               </Avatar>
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
+                  "max-w-[84%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
                   message.role === "user"
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted"
@@ -181,51 +183,53 @@ export function OnboardingChat() {
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
-      {/* Generate persona button */}
-      {personaReady && (
-        <Button
-          onClick={handleGeneratePersona}
-          disabled={generating}
-          size="lg"
-          className="w-full"
-        >
-          {generating ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Generating your persona...
-            </>
-          ) : (
-            <>
-              <Sparkles className="size-4" />
-              Generate my persona
-            </>
-          )}
-        </Button>
-      )}
+      <div className="shrink-0 space-y-4 border-t bg-background pt-4">
+        {/* Generate persona button */}
+        {personaReady && (
+          <Button
+            onClick={handleGeneratePersona}
+            disabled={generating}
+            size="lg"
+            className="w-full"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Generating your persona...
+              </>
+            ) : (
+              <>
+                <Sparkles className="size-4" />
+                Generate my persona
+              </>
+            )}
+          </Button>
+        )}
 
-      {/* Input */}
-      <form onSubmit={onSubmit} className="flex gap-2">
-        <textarea
-          value={input}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          placeholder="Type your answer..."
-          rows={1}
-          className="flex-1 resize-none rounded-xl border bg-background px-4 py-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
-          disabled={isLoading}
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={!input.trim() || isLoading}
-          className="shrink-0 rounded-xl"
-        >
-          <Send className="size-4" />
-          <span className="sr-only">Send</span>
-        </Button>
-      </form>
+        {/* Input */}
+        <form onSubmit={onSubmit} className="flex items-center gap-2">
+          <textarea
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your answer..."
+            rows={1}
+            className="flex-1 resize-none rounded-xl border bg-background px-4 py-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            disabled={isLoading}
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!input.trim() || isLoading}
+            className="shrink-0 self-center rounded-xl"
+          >
+            <Send className="size-4" />
+            <span className="sr-only">Send</span>
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
