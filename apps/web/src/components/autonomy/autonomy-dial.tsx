@@ -12,7 +12,8 @@ const LEVELS: {
   tagline: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
-  bgColor: string;
+  buttonBgColor: string;
+  panelBgColor: string;
   ringColor: string;
   dotColor: string;
 }[] = [
@@ -21,8 +22,9 @@ const LEVELS: {
     label: "Observer",
     tagline: "Alter reflects, no actions",
     icon: Eye,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
+    color: "text-blue-600 dark:text-blue-300",
+    buttonBgColor: "bg-card dark:bg-slate-950",
+    panelBgColor: "bg-blue-50 dark:bg-blue-950/35",
     ringColor: "ring-blue-500",
     dotColor: "bg-blue-500",
   },
@@ -31,8 +33,9 @@ const LEVELS: {
     label: "Advisor",
     tagline: "Alter suggests, you decide",
     icon: MessageSquare,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
+    color: "text-amber-600 dark:text-amber-300",
+    buttonBgColor: "bg-card dark:bg-slate-950",
+    panelBgColor: "bg-amber-50 dark:bg-amber-950/35",
     ringColor: "ring-amber-500",
     dotColor: "bg-amber-500",
   },
@@ -41,8 +44,9 @@ const LEVELS: {
     label: "Co-pilot",
     tagline: "Alter prepares, you confirm",
     icon: FileEdit,
-    color: "text-orange-600",
-    bgColor: "bg-orange-50",
+    color: "text-orange-600 dark:text-orange-300",
+    buttonBgColor: "bg-card dark:bg-slate-950",
+    panelBgColor: "bg-orange-50 dark:bg-orange-950/35",
     ringColor: "ring-orange-500",
     dotColor: "bg-orange-500",
   },
@@ -51,8 +55,9 @@ const LEVELS: {
     label: "Autonomous",
     tagline: "Alter acts within your rules",
     icon: Zap,
-    color: "text-red-600",
-    bgColor: "bg-red-50",
+    color: "text-red-600 dark:text-red-300",
+    buttonBgColor: "bg-card dark:bg-slate-950",
+    panelBgColor: "bg-red-50 dark:bg-red-950/35",
     ringColor: "ring-red-500",
     dotColor: "bg-red-500",
   },
@@ -97,7 +102,7 @@ export function AutonomyDial({ value, onChange, disabled }: AutonomyDialProps) {
             current.dotColor
           )}
           style={{
-            width: `${(currentIndex / (LEVELS.length - 1)) * 100}%`,
+            width: `calc(${(currentIndex / (LEVELS.length - 1)) * 100}% - 1rem)`,
           }}
         />
 
@@ -114,13 +119,14 @@ export function AutonomyDial({ value, onChange, disabled }: AutonomyDialProps) {
               type="button"
               disabled={disabled}
               className={cn(
-                "relative z-10 flex size-10 items-center justify-center rounded-full border-2 transition-all duration-300",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+                "relative z-10 inline-flex size-10 shrink-0 items-center justify-center rounded-full border-2 p-0 transition-all duration-300",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 isCurrent && [
-                  level.bgColor,
+                  level.buttonBgColor,
                   level.color,
                   "border-current",
                   "scale-110",
+                  "shadow-sm",
                   `focus-visible:${level.ringColor}`,
                 ],
                 isActive &&
@@ -142,7 +148,7 @@ export function AutonomyDial({ value, onChange, disabled }: AutonomyDialProps) {
               onMouseLeave={() => setHoveredIndex(null)}
               aria-label={`Set autonomy to ${level.label}`}
             >
-              <Icon className="size-4" />
+              <Icon className="size-4 shrink-0" />
               {/* Tooltip on hover */}
               {isHovered && !isCurrent && (
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-popover px-2.5 py-1 text-xs font-medium text-popover-foreground shadow-md">
@@ -158,14 +164,14 @@ export function AutonomyDial({ value, onChange, disabled }: AutonomyDialProps) {
       <div
         className={cn(
           "rounded-lg px-4 py-3 text-center transition-all duration-300",
-          current.bgColor
+          current.panelBgColor
         )}
       >
         <p className={cn("text-sm font-semibold", current.color)}>
           <CurrentIcon className="mr-1.5 inline-block size-4" />
           {current.label}
         </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p className="mt-0.5 text-xs text-muted-foreground dark:text-slate-300/80">
           {current.tagline}
         </p>
       </div>

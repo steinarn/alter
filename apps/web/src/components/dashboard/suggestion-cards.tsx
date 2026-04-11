@@ -51,33 +51,41 @@ const PRESENTATION_META: Record<
   reflection: {
     label: "Reflection",
     icon: Eye,
-    color: "text-blue-600",
-    cardClass: "border-blue-200 bg-blue-50/50",
-    bodyClass: "bg-blue-100/70 text-blue-900",
+    color: "text-blue-600 dark:text-blue-300",
+    cardClass:
+      "border-blue-200 bg-blue-50/50 dark:border-blue-900/70 dark:bg-slate-900/95",
+    bodyClass:
+      "bg-blue-100/70 text-blue-900 dark:bg-blue-900/35 dark:text-blue-100",
     helper: "Observer mode: Alter is surfacing a pattern for you to consider.",
   },
   action: {
     label: "Needs Approval",
     icon: MessageSquare,
-    color: "text-amber-600",
-    cardClass: "border-amber-200 bg-amber-50/60",
-    bodyClass: "bg-amber-100/70 text-amber-900",
+    color: "text-amber-600 dark:text-amber-300",
+    cardClass:
+      "border-amber-200 bg-amber-50/60 dark:border-blue-900/70 dark:bg-slate-900/95",
+    bodyClass:
+      "bg-amber-100/70 text-amber-900 dark:bg-blue-900/30 dark:text-blue-100",
     helper: "Advisor mode: Alter suggests the move, but you stay in control.",
   },
   draft: {
     label: "Ready To Confirm",
     icon: FileEdit,
-    color: "text-orange-600",
-    cardClass: "border-orange-200 bg-orange-50/60",
-    bodyClass: "bg-orange-100/70 text-orange-900",
+    color: "text-orange-600 dark:text-orange-300",
+    cardClass:
+      "border-orange-200 bg-orange-50/60 dark:border-blue-900/70 dark:bg-slate-900/95",
+    bodyClass:
+      "bg-orange-100/70 text-orange-900 dark:bg-blue-900/30 dark:text-blue-100",
     helper: "Co-pilot mode: Alter has prepared the action for your confirmation.",
   },
   notification: {
     label: "Already Acted",
     icon: Zap,
-    color: "text-emerald-600",
-    cardClass: "border-emerald-200 bg-emerald-50/60",
-    bodyClass: "bg-emerald-100/70 text-emerald-900",
+    color: "text-emerald-600 dark:text-emerald-300",
+    cardClass:
+      "border-emerald-200 bg-emerald-50/60 dark:border-blue-900/70 dark:bg-slate-900/95",
+    bodyClass:
+      "bg-emerald-100/70 text-emerald-900 dark:bg-blue-900/30 dark:text-blue-100",
     helper: "Autonomous mode: Alter already handled this within your rules.",
   },
 };
@@ -108,7 +116,7 @@ function SuggestionCard({
       className={cn(
         meta.cardClass,
         suggestion.highlighted &&
-          "animate-pulse border-emerald-300 shadow-sm"
+          "animate-pulse border-emerald-300 shadow-sm dark:border-emerald-700"
       )}
     >
       <CardHeader className="pb-2">
@@ -195,7 +203,7 @@ function SuggestionCard({
         )}
 
         {suggestion.presentation === "notification" && suggestion.footerText && (
-          <p className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+          <p className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-300">
             <Zap className="size-3" />
             {suggestion.footerText}
           </p>

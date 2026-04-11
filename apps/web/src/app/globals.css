@@ -6,6 +6,7 @@
   --color-muted: #f5f5f5;
   --color-muted-foreground: #737373;
   --color-border: #e5e5e5;
+  --color-input: #e5e5e5;
   --color-primary: #0a0a0a;
   --color-primary-foreground: #ffffff;
   --color-secondary: #f5f5f5;
@@ -27,6 +28,33 @@
 
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+  --color-background: #0c1117;
+  --color-foreground: #edf3fb;
+  --color-muted: #151d27;
+  --color-muted-foreground: #8a97a8;
+  --color-border: #223041;
+  --color-input: #223041;
+  --color-primary: #edf3fb;
+  --color-primary-foreground: #0c1117;
+  --color-secondary: #16202b;
+  --color-secondary-foreground: #edf3fb;
+  --color-accent: #1a2633;
+  --color-accent-foreground: #edf3fb;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #10151c;
+  --color-ring: #9cc5ff;
+  --color-card: #111923;
+  --color-card-foreground: #edf3fb;
+  --color-popover: #111923;
+  --color-popover-foreground: #edf3fb;
 }
 
 @layer base {
