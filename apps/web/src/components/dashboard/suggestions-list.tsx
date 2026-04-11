@@ -236,6 +236,7 @@ export function SuggestionsList({
 
       let fresh: SuggestionItem[] = [];
       let modeSuggestions: SuggestionItem[] = [];
+      let changedIds: string[] = [];
 
       const shouldFetchSuggestions =
         currentAutomationState.autonomyLevel === "AUTONOMOUS" ||
@@ -253,6 +254,20 @@ export function SuggestionsList({
           (suggestion) => suggestion.mode === currentAutomationState.mode
         );
 
+        changedIds = modeSuggestions
+          .filter((suggestion) => {
+            const previous = previousSuggestions.find(
+              (item) => item.id === suggestion.id
+            );
+
+            return (
+              !previous ||
+              previous.status !== suggestion.status ||
+              previous.createdAt !== suggestion.createdAt
+            );
+          })
+          .map((suggestion) => suggestion.id);
+
         const startedAtMs =
           new Date(currentAutomationState.startedAt).getTime() - 1000;
         fresh = modeSuggestions.filter((suggestion) => {
@@ -266,6 +281,38 @@ export function SuggestionsList({
             new Date(suggestion.createdAt).getTime() >= startedAtMs
           );
         });
+      }
+
+      if (
+        job.state === "completed" &&
+        currentAutomationState.autonomyLevel !== "AUTONOMOUS"
+      ) {
+        if (intervalId !== null) {
+          window.clearInterval(intervalId);
+        }
+
+        const highlightIds = fresh.length > 0 ? fresh.map((s) => s.id) : changedIds;
+
+        if (highlightIds.length > 0) {
+          setRecentlyUpdatedIds(highlightIds);
+        }
+
+        router.refresh();
+        setAutomationState((prev) =>
+          prev ? { ...prev, phase: "complete" } : prev
+        );
+
+        completionTimeoutId = window.setTimeout(() => {
+          if (highlightIds.length > 0) {
+            setRecentlyUpdatedIds((prev) =>
+              prev.filter((id) => !highlightIds.includes(id))
+            );
+          }
+          setAutomationState((prev) =>
+            prev?.phase === "complete" ? null : prev
+          );
+        }, 3500);
+        return;
       }
 
       if (fresh.length === 0) {
@@ -309,10 +356,11 @@ export function SuggestionsList({
 
         automationAttemptsRef.current += 1;
         if (automationAttemptsRef.current >= 20) {
-          if (intervalId !== null) {
-            window.clearInterval(intervalId);
-          }
-          setAutomationState((prev) => (prev ? { ...prev, phase: "stalled" } : prev));
+          setAutomationState((prev) =>
+            prev && prev.phase !== "stalled"
+              ? { ...prev, phase: "stalled" }
+              : prev
+          );
         }
         return;
       }
@@ -325,7 +373,6 @@ export function SuggestionsList({
         const freshIds = fresh.map((suggestion) => suggestion.id);
         if (freshIds.length > 0) {
           setRecentlyUpdatedIds(freshIds);
-          router.refresh();
           setAutomationState((prev) =>
             prev ? { ...prev, phase: "complete" } : prev
           );
