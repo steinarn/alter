@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -131,6 +132,7 @@ export function SuggestionsList({
   suggestions: SuggestionItem[];
   userId: string;
 }) {
+  const router = useRouter();
   const [suggestions, setSuggestions] =
     useState<SuggestionItem[]>(initialSuggestions);
   const [generating, setGenerating] = useState(false);
@@ -149,10 +151,34 @@ export function SuggestionsList({
     ? `${automationState.mode}-${automationState.startedAt}-${automationState.autonomyLevel}`
     : null;
   const storageKey = `alter-suggestion-generation:${userId}`;
+  const suggestionsRef = useRef<SuggestionItem[]>(initialSuggestions);
+
+  const refreshSuggestions = useCallback(async () => {
+    const res = await fetch(`/api/users/${userId}/suggestions`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const nextSuggestions: SuggestionItem[] = (
+      data.suggestions as Array<Record<string, unknown>>
+    ).map(mapSuggestionItem);
+
+    setSuggestions(nextSuggestions);
+    return nextSuggestions;
+  }, [userId]);
 
   useEffect(() => {
     setSuggestions(initialSuggestions);
   }, [initialSuggestions]);
+
+  useEffect(() => {
+    suggestionsRef.current = suggestions;
+  }, [suggestions]);
+
+  useEffect(() => {
+    void refreshSuggestions();
+  }, [refreshSuggestions]);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(storageKey);
@@ -198,7 +224,8 @@ export function SuggestionsList({
 
     async function poll() {
       const jobRes = await fetch(
-        `/api/users/${userId}/suggestions/jobs/${currentAutomationState.jobId}`
+        `/api/users/${userId}/suggestions/jobs/${currentAutomationState.jobId}`,
+        { cache: "no-store" }
       );
       if (!jobRes.ok || cancelled) return;
 
@@ -208,6 +235,7 @@ export function SuggestionsList({
       };
 
       let fresh: SuggestionItem[] = [];
+      let modeSuggestions: SuggestionItem[] = [];
 
       const shouldFetchSuggestions =
         currentAutomationState.autonomyLevel === "AUTONOMOUS" ||
@@ -215,33 +243,29 @@ export function SuggestionsList({
         job.state === "failed";
 
       if (shouldFetchSuggestions) {
-        const params = new URLSearchParams({ mode: currentAutomationState.mode });
-        const res = await fetch(`/api/users/${userId}/suggestions?${params}`);
-        if (!res.ok || cancelled) return;
-
-        const data = await res.json();
-        const nextSuggestions: SuggestionItem[] = (
-          data.suggestions as Array<Record<string, unknown>>
-        ).map(mapSuggestionItem);
+        const previousSuggestions = suggestionsRef.current;
+        const nextSuggestions = await refreshSuggestions();
+        if (!nextSuggestions || cancelled) return;
 
         if (cancelled) return;
 
-        setSuggestions((prev) => {
-          const byId = new Map(prev.map((item) => [item.id, item]));
-          for (const item of nextSuggestions) {
-            byId.set(item.id, item);
-          }
-          return Array.from(byId.values()).sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        });
+        modeSuggestions = nextSuggestions.filter(
+          (suggestion) => suggestion.mode === currentAutomationState.mode
+        );
 
         const startedAtMs =
           new Date(currentAutomationState.startedAt).getTime() - 1000;
-        fresh = nextSuggestions.filter(
-          (suggestion) => new Date(suggestion.createdAt).getTime() >= startedAtMs
-        );
+        fresh = modeSuggestions.filter((suggestion) => {
+          const previous = previousSuggestions.find(
+            (item) => item.id === suggestion.id
+          );
+
+          return (
+            !previous ||
+            previous.status !== suggestion.status ||
+            new Date(suggestion.createdAt).getTime() >= startedAtMs
+          );
+        });
       }
 
       if (fresh.length === 0) {
@@ -301,6 +325,7 @@ export function SuggestionsList({
         const freshIds = fresh.map((suggestion) => suggestion.id);
         if (freshIds.length > 0) {
           setRecentlyUpdatedIds(freshIds);
+          router.refresh();
           setAutomationState((prev) =>
             prev ? { ...prev, phase: "complete" } : prev
           );
@@ -323,7 +348,9 @@ export function SuggestionsList({
         return;
       }
 
-      const pending = fresh.some((suggestion) => suggestion.status === "PENDING");
+      const pending = modeSuggestions.some(
+        (suggestion) => suggestion.status === "PENDING"
+      );
       const completedIds = fresh
         .filter((suggestion) =>
           suggestion.status === "ACTED" || suggestion.status === "DECLINED"
@@ -348,6 +375,7 @@ export function SuggestionsList({
           window.clearInterval(intervalId);
         }
         setRecentlyUpdatedIds(completedIds);
+        router.refresh();
         setAutomationState((prev) =>
           prev ? { ...prev, phase: "complete" } : prev
         );
@@ -384,7 +412,7 @@ export function SuggestionsList({
         window.clearTimeout(completionTimeoutId);
       }
     };
-  }, [automationCycleKey, userId]);
+  }, [automationCycleKey, router, userId]);
 
   async function handleStatusChange(
     id: string,

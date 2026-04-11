@@ -81,6 +81,23 @@ interface DashboardData {
   } | null;
 }
 
+type DashboardSuggestionCard = {
+  id?: string;
+  title: string;
+  description: string;
+  reason: string;
+  mode: "PERSONAL" | "PROFESSIONAL";
+  status?: string;
+  autonomyLevelRequired: string;
+  priority: number;
+  presentation: "reflection" | "action" | "draft" | "notification";
+  showAcceptDecline: boolean;
+  helperText?: string;
+  badgeLabel?: string;
+  footerText?: string;
+  highlighted?: boolean;
+};
+
 export function DashboardShell({ userId }: { userId: string }) {
   const mode = useDashboardStore((s) => s.mode);
   const [data, setData] = useState<DashboardData | null>(null);
@@ -93,6 +110,9 @@ export function DashboardShell({ userId }: { userId: string }) {
     []
   );
   const [autonomousProcessing, setAutonomousProcessing] = useState(false);
+  const [suggestionVisibility, setSuggestionVisibility] = useState<
+    "INCOMING" | "ALL"
+  >("INCOMING");
   const persistedSuggestionsRef = useRef<DashboardData["persistedSuggestions"]>([]);
 
   const fetchDashboard = useCallback(
@@ -332,7 +352,7 @@ export function DashboardShell({ userId }: { userId: string }) {
     data.persistedSuggestions.map((s) => s.title)
   );
 
-  const persistedAsSuggestions = data.persistedSuggestions.map((s) => {
+  const persistedAsSuggestions: DashboardSuggestionCard[] = data.persistedSuggestions.map((s) => {
     // Find matching domain suggestion for presentation info
     const domainMatch = data.suggestions.find(
       (ds) => ds.title === s.title
@@ -353,6 +373,7 @@ export function DashboardShell({ userId }: { userId: string }) {
       description: s.description,
       reason: s.reason,
       mode: s.mode as "PERSONAL" | "PROFESSIONAL",
+      status: s.status,
       autonomyLevelRequired: s.autonomyLevelRequired,
       priority: domainMatch?.priority ?? 5,
       presentation:
@@ -376,11 +397,29 @@ export function DashboardShell({ userId }: { userId: string }) {
     };
   });
 
-  const domainOnly = data.suggestions.filter(
-    (s) => !persistedTitles.has(s.title)
-  );
+  const domainOnly: DashboardSuggestionCard[] = data.suggestions
+    .filter((s) => !persistedTitles.has(s.title))
+    .map((suggestion) => ({
+      ...suggestion,
+      highlighted: false,
+    }));
 
-  const mergedSuggestions = [...persistedAsSuggestions, ...domainOnly];
+  const mergedSuggestions: DashboardSuggestionCard[] = [
+    ...persistedAsSuggestions,
+    ...domainOnly,
+  ];
+  const incomingSuggestions = mergedSuggestions.filter((suggestion) =>
+    isIncomingDashboardSuggestion(
+      suggestion.id,
+      suggestion.status,
+      suggestion.highlighted
+    )
+  );
+  const incomingCount = incomingSuggestions.filter(
+    (suggestion) => suggestion.mode === mode
+  ).length;
+  const visibleSuggestions =
+    suggestionVisibility === "ALL" ? mergedSuggestions : incomingSuggestions;
 
   return (
     <div className="space-y-6">
@@ -421,7 +460,34 @@ export function DashboardShell({ userId }: { userId: string }) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Suggestions</h2>
-          <ModeToggle />
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-border bg-background p-1">
+              <button
+                type="button"
+                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                  suggestionVisibility === "INCOMING"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setSuggestionVisibility("INCOMING")}
+              >
+                Incoming
+                <span className="ml-1 opacity-70">{incomingCount}</span>
+              </button>
+              <button
+                type="button"
+                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                  suggestionVisibility === "ALL"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setSuggestionVisibility("ALL")}
+              >
+                All History
+              </button>
+            </div>
+            <ModeToggle />
+          </div>
         </div>
         {autonomousProcessing && (
           <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-700">
@@ -430,7 +496,7 @@ export function DashboardShell({ userId }: { userId: string }) {
           </div>
         )}
         <SuggestionCards
-          suggestions={mergedSuggestions}
+          suggestions={visibleSuggestions}
           mode={mode}
           onAccept={(id) => handleSuggestionAction(id, "ACCEPTED")}
           onDecline={(id) => handleSuggestionAction(id, "DECLINED")}
@@ -520,4 +586,14 @@ function getPersistedSuggestionPresentation(
     helperText: "Autonomous mode: Alter is processing this suggestion now.",
     badgeLabel: "Working",
   };
+}
+
+function isIncomingDashboardSuggestion(
+  id: string | undefined,
+  status: string | undefined,
+  highlighted: boolean | undefined
+): boolean {
+  if (!id) return true;
+  if (highlighted) return true;
+  return status === "PENDING";
 }

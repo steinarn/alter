@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { suggestionsQueue } from "@/lib/queues";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ userId: string; jobId: string }> }

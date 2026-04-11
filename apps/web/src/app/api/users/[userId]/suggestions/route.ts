@@ -8,6 +8,9 @@ import {
 
 const prisma = new PrismaClient();
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const querySchema = z.object({
   mode: z.enum(["PERSONAL", "PROFESSIONAL"]).optional(),
 });
