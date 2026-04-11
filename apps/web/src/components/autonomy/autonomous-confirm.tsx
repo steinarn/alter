@@ -59,13 +59,13 @@ export function AutonomousConfirm({
   const anyEnabled = rules.some((r) => r.enabled);
 
   return (
-    <Card className="border-red-200 bg-red-50/50">
+    <Card className="border-red-200 bg-red-50/50 dark:border-red-900/60 dark:bg-slate-900/95">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
-          <ShieldAlert className="size-5 text-red-500" />
+          <ShieldAlert className="size-5 text-red-500 dark:text-red-300" />
           <CardTitle className="text-base">Enable Autonomous Mode</CardTitle>
         </div>
-        <CardDescription>
+        <CardDescription className="dark:text-slate-300/85">
           Alter will act on your behalf within these rules. Review and confirm.
         </CardDescription>
       </CardHeader>
@@ -74,7 +74,7 @@ export function AutonomousConfirm({
           {rules.map((rule) => (
             <label
               key={rule.id}
-              className="flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-muted/50"
+              className="flex cursor-pointer items-start gap-3 rounded-lg border bg-background p-3 transition-colors hover:bg-muted/50 dark:border-blue-900/60 dark:bg-slate-950 dark:hover:bg-slate-900"
             >
               <input
                 type="checkbox"
@@ -84,7 +84,7 @@ export function AutonomousConfirm({
               />
               <div>
                 <p className="text-sm font-medium">{rule.label}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground dark:text-slate-400">
                   {rule.description}
                 </p>
               </div>
