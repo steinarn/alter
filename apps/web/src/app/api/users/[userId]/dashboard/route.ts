@@ -6,6 +6,7 @@ import {
   detectConflicts,
   generateSuggestionCriteria,
   filterSuggestionsByAutonomy,
+  getAutonomyLevelForMode,
 } from "@alter/domain";
 import { buildMockDashboardData, getMockProfileByUserId } from "@/mock/personas";
 
@@ -66,13 +67,21 @@ export async function GET(
     user.goals
   );
 
-  // Filter by autonomy level
-  const autonomyLevel = user.autonomySetting?.level ?? "OBSERVER";
-  const suggestions = filterSuggestionsByAutonomy(criteria, autonomyLevel);
+  const personalSuggestions = filterSuggestionsByAutonomy(
+    criteria.filter((suggestion) => suggestion.mode === "PERSONAL"),
+    getAutonomyLevelForMode(user.autonomySetting, "PERSONAL")
+  );
+  const professionalSuggestions = filterSuggestionsByAutonomy(
+    criteria.filter((suggestion) => suggestion.mode === "PROFESSIONAL"),
+    getAutonomyLevelForMode(user.autonomySetting, "PROFESSIONAL")
+  );
+  const suggestions = [...personalSuggestions, ...professionalSuggestions].sort(
+    (a, b) => b.priority - a.priority
+  );
 
   // Fetch persisted suggestions for this user
   const persistedSuggestions = await prisma.suggestion.findMany({
-    where: { userId, status: "PENDING" },
+    where: { userId },
     include: { actions: true },
     orderBy: { createdAt: "desc" },
     take: 20,

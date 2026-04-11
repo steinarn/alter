@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient, Prisma } from "@alter/db";
-import { generateSuggestions } from "@alter/ai";
+import { PrismaClient } from "@alter/db";
+import { getAutonomyLevelForMode } from "@alter/domain";
 import { z } from "zod";
 import {
   generateMockSuggestions,
   getMockProfileByUserId,
 } from "@/mock/personas";
+import { suggestionsQueue } from "@/lib/queues";
 
 const prisma = new PrismaClient();
 
@@ -61,60 +62,20 @@ export async function POST(
     );
   }
 
-  // Get calendar events for next 7 days
-  const now = new Date();
-  const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const autonomyLevel = getAutonomyLevelForMode(
+    user.autonomySetting,
+    parsed.data.mode
+  );
 
-  const calendarEvents = await prisma.calendarEvent.findMany({
-    where: {
-      userId,
-      startTime: { gte: now, lte: weekFromNow },
-    },
-    orderBy: { startTime: "asc" },
-  });
-
-  const aiResult = await generateSuggestions({
-    persona: {
-      summary: user.personaCard.summary,
-      communicationStyle: user.personaCard.communicationStyle,
-      boundaryNotes: user.personaCard.boundaryNotes,
-    },
-    drivers: user.energyDrivers,
-    goals: user.goals,
-    priorities: user.priorities,
-    calendarEvents,
+  const job = await suggestionsQueue.add("generate", {
+    userId,
     mode: parsed.data.mode,
   });
 
-  // Persist suggestions
-  const autonomyLevel = user.autonomySetting?.level ?? "OBSERVER";
-
-  const created = await Promise.all(
-    aiResult.suggestions.map((s) =>
-      prisma.suggestion.create({
-        data: {
-          userId,
-          mode: s.mode,
-          title: s.title,
-          description: s.description,
-          reason: s.reason,
-          status: "PENDING",
-          autonomyLevelRequired: s.autonomyLevelRequired,
-          actions: {
-            create: {
-              actionType: s.actionType,
-              payload: s.actionPayload as Prisma.InputJsonValue,
-            },
-          },
-        },
-        include: { actions: true },
-      })
-    )
-  );
-
   return NextResponse.json({
-    generated: created.length,
-    suggestions: created,
+    queued: true,
+    jobId: job.id,
+    startedAt: new Date().toISOString(),
     autonomyLevel,
   });
 }

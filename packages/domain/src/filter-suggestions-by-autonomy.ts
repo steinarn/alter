@@ -29,6 +29,14 @@ export function filterSuggestionsByAutonomy(
   suggestions: SuggestionCriterion[],
   userLevel: AutonomyLevel
 ): FilteredSuggestion[] {
+  if (userLevel === "AUTONOMOUS") {
+    return suggestions.map((suggestion) => ({
+      ...suggestion,
+      presentation: "notification",
+      showAcceptDecline: false,
+    }));
+  }
+
   const userRank = AUTONOMY_RANK[userLevel];
 
   return suggestions.map((suggestion) => {

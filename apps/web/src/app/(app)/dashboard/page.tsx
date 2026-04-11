@@ -113,14 +113,22 @@ export default async function DashboardPage() {
         boundaryNotes={user.personaCard.boundaryNotes}
         autonomyLevel={user.autonomySetting?.level ?? "OBSERVER"}
         energizer={
-          user.energyDrivers.find((driver) => driver.driverType === "ENERGIZER")
+          user.energyDrivers.find(
+            (driver: { driverType: string; label: string }) =>
+              driver.driverType === "ENERGIZER"
+          )
             ?.label ?? null
         }
         drainer={
-          user.energyDrivers.find((driver) => driver.driverType === "DRAINER")
+          user.energyDrivers.find(
+            (driver: { driverType: string; label: string }) =>
+              driver.driverType === "DRAINER"
+          )
             ?.label ?? null
         }
-        goals={user.goals.slice(0, 3).map((goal) => goal.title)}
+        goals={user.goals
+          .slice(0, 3)
+          .map((goal: { title: string }) => goal.title)}
       />
       <DashboardShell userId={user.id} />
     </div>

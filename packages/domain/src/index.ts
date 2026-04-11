@@ -43,6 +43,11 @@ export {
 } from "./filter-suggestions-by-autonomy";
 
 export {
+  deriveOverallAutonomyLevel,
+  getAutonomyLevelForMode,
+} from "./autonomy-utils";
+
+export {
   resolveSuggestionAction,
   type ActionResolution,
 } from "./resolve-suggestion-action";

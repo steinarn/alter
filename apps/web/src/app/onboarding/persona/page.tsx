@@ -32,17 +32,28 @@ export default async function PersonaPage() {
         boundaryNotes: user.personaCard.boundaryNotes,
         confirmed: !!user.personaCard.confirmedAt,
       }}
-      energyDrivers={user.energyDrivers.map((d) => ({
+      energyDrivers={user.energyDrivers.map((d: {
+        label: string;
+        description: string;
+        driverType: string;
+      }) => ({
         label: d.label,
         description: d.description,
         driverType: d.driverType as "ENERGIZER" | "DRAINER",
       }))}
-      goals={user.goals.map((g) => ({
+      goals={user.goals.map((g: {
+        title: string;
+        description: string;
+        category: string;
+      }) => ({
         title: g.title,
         description: g.description,
         category: g.category as "PROFESSIONAL" | "PERSONAL",
       }))}
-      priorities={user.priorities.map((p) => ({
+      priorities={user.priorities.map((p: {
+        dimension: string;
+        importance: number;
+      }) => ({
         dimension: p.dimension as "WORK" | "REST" | "SOCIAL" | "GROWTH",
         importance: p.importance,
       }))}

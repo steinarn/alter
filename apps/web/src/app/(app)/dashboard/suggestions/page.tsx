@@ -74,7 +74,17 @@ export default async function SuggestionsPage() {
     <div className="flex flex-col gap-6">
       {header}
       <SuggestionsList
-        suggestions={suggestions.map((s) => ({
+        suggestions={suggestions.map((s: {
+          id: string;
+          title: string;
+          description: string;
+          reason: string;
+          mode: string;
+          status: string;
+          autonomyLevelRequired: string;
+          createdAt: Date;
+          actions: Array<{ actionType: string; executedAt: Date | null }>;
+        }) => ({
           id: s.id,
           title: s.title,
           description: s.description,
@@ -83,7 +93,10 @@ export default async function SuggestionsPage() {
           status: s.status as "PENDING" | "ACCEPTED" | "DECLINED" | "ACTED",
           autonomyLevelRequired: s.autonomyLevelRequired,
           createdAt: s.createdAt.toISOString(),
-          actions: s.actions.map((a) => ({
+          actions: s.actions.map((a: {
+            actionType: string;
+            executedAt: Date | null;
+          }) => ({
             actionType: a.actionType,
             executedAt: a.executedAt?.toISOString() ?? null,
           })),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useDashboardStore } from "@/stores/dashboard-store";
 import { EnergyForecast } from "./energy-forecast";
 import { BalanceScores } from "./balance-scores";
@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Loader2, Zap } from "lucide-react";
 
 type AutonomyLevel = "OBSERVER" | "ADVISOR" | "COPILOT" | "AUTONOMOUS";
 
@@ -58,6 +59,12 @@ interface DashboardData {
     mode: string;
     status: string;
     autonomyLevelRequired: string;
+    createdAt: string;
+    actions?: Array<{
+      actionType: string;
+      payload: Record<string, unknown>;
+      executedAt?: string | null;
+    }>;
   }>;
   calendarEvents: Array<{
     id: string;
@@ -82,6 +89,11 @@ export function DashboardShell({ userId }: { userId: string }) {
   const [autonomyLevel, setAutonomyLevel] = useState<AutonomyLevel>("OBSERVER");
   const [pendingAutonomous, setPendingAutonomous] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [highlightedSuggestionIds, setHighlightedSuggestionIds] = useState<string[]>(
+    []
+  );
+  const [autonomousProcessing, setAutonomousProcessing] = useState(false);
+  const persistedSuggestionsRef = useRef<DashboardData["persistedSuggestions"]>([]);
 
   const fetchDashboard = useCallback(
     async (signal?: AbortSignal) => {
@@ -112,6 +124,123 @@ export function DashboardShell({ userId }: { userId: string }) {
     fetchDashboard(controller.signal);
     return () => controller.abort();
   }, [fetchDashboard]);
+
+  useEffect(() => {
+    persistedSuggestionsRef.current = data?.persistedSuggestions ?? [];
+  }, [data?.persistedSuggestions]);
+
+  useEffect(() => {
+    if (!data) return;
+
+    const modeAutonomy = getModeAutonomyLevel(data.autonomy, mode);
+    const hasPending = data.persistedSuggestions.some(
+      (suggestion) =>
+        suggestion.mode === mode && suggestion.status === "PENDING"
+    );
+
+    if (modeAutonomy !== "AUTONOMOUS" || !hasPending) {
+      setAutonomousProcessing(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function enqueueAndPoll() {
+      setAutonomousProcessing(true);
+      await fetch(`/api/users/${userId}/suggestions/autonomous-pass`, {
+        method: "POST",
+      });
+
+      const interval = window.setInterval(async () => {
+        const res = await fetch(`/api/users/${userId}/suggestions?mode=${mode}`);
+        if (!res.ok || cancelled) return;
+
+        const json = await res.json();
+        const nextSuggestions = (json.suggestions as Array<Record<string, unknown>>).map(
+          (suggestion) => ({
+            id: suggestion.id as string,
+            title: suggestion.title as string,
+            description: suggestion.description as string,
+            reason: suggestion.reason as string,
+            mode: suggestion.mode as string,
+            status: suggestion.status as string,
+            autonomyLevelRequired: suggestion.autonomyLevelRequired as string,
+            createdAt:
+              (suggestion.createdAt as string) ?? new Date().toISOString(),
+            actions: ((suggestion.actions as Array<Record<string, unknown>>) ?? []).map(
+              (action) => ({
+                actionType: action.actionType as string,
+                payload: (action.payload as Record<string, unknown>) ?? {},
+                executedAt: (action.executedAt as string) ?? null,
+              })
+            ),
+          })
+        );
+
+        const changedIds = nextSuggestions
+          .filter((suggestion) => {
+            const previous = persistedSuggestionsRef.current.find(
+              (item) => item.id === suggestion.id
+            );
+            return previous && previous.status !== suggestion.status;
+          })
+          .map((suggestion) => suggestion.id);
+
+        if (changedIds.length > 0) {
+          setHighlightedSuggestionIds((prev) => [
+            ...new Set([...prev, ...changedIds]),
+          ]);
+          window.setTimeout(() => {
+            setHighlightedSuggestionIds((prev) =>
+              prev.filter((id) => !changedIds.includes(id))
+            );
+          }, 2200);
+        }
+
+        setData((prev) => {
+          if (!prev) return prev;
+          const byId = new Map(
+            prev.persistedSuggestions.map((suggestion) => [suggestion.id, suggestion])
+          );
+          for (const suggestion of nextSuggestions) {
+            byId.set(suggestion.id, suggestion);
+          }
+
+          return {
+            ...prev,
+            persistedSuggestions: Array.from(byId.values()).sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            ),
+          };
+        });
+
+        const stillPending = nextSuggestions.some(
+          (suggestion) => suggestion.status === "PENDING"
+        );
+
+        if (!stillPending) {
+          setAutonomousProcessing(false);
+          window.clearInterval(interval);
+        }
+      }, 1200);
+
+      return interval;
+    }
+
+    let intervalPromise: Promise<number | void> | null = enqueueAndPoll();
+
+    return () => {
+      cancelled = true;
+      setAutonomousProcessing(false);
+      void intervalPromise?.then((interval) => {
+        if (typeof interval === "number") {
+          window.clearInterval(interval);
+        }
+      });
+    };
+  }, [data, mode, userId]);
 
   const handleAutonomyChange = useCallback(
     async (level: AutonomyLevel) => {
@@ -208,6 +337,16 @@ export function DashboardShell({ userId }: { userId: string }) {
     const domainMatch = data.suggestions.find(
       (ds) => ds.title === s.title
     );
+    const modeAutonomy = getModeAutonomyLevel(
+      data.autonomy,
+      s.mode as "PERSONAL" | "PROFESSIONAL"
+    );
+
+    const persistedPresentation = getPersistedSuggestionPresentation(
+      s,
+      modeAutonomy
+    );
+
     return {
       id: s.id,
       title: s.title,
@@ -216,8 +355,24 @@ export function DashboardShell({ userId }: { userId: string }) {
       mode: s.mode as "PERSONAL" | "PROFESSIONAL",
       autonomyLevelRequired: s.autonomyLevelRequired,
       priority: domainMatch?.priority ?? 5,
-      presentation: domainMatch?.presentation ?? ("action" as const),
-      showAcceptDecline: domainMatch?.showAcceptDecline ?? true,
+      presentation:
+        persistedPresentation?.presentation ??
+        domainMatch?.presentation ??
+        ("action" as const),
+      showAcceptDecline:
+        persistedPresentation?.showAcceptDecline ??
+        domainMatch?.showAcceptDecline ??
+        true,
+      helperText:
+        persistedPresentation?.helperText ??
+        undefined,
+      badgeLabel:
+        persistedPresentation?.badgeLabel ??
+        undefined,
+      footerText:
+        persistedPresentation?.footerText ??
+        undefined,
+      highlighted: highlightedSuggestionIds.includes(s.id),
     };
   });
 
@@ -268,6 +423,12 @@ export function DashboardShell({ userId }: { userId: string }) {
           <h2 className="text-lg font-semibold">Suggestions</h2>
           <ModeToggle />
         </div>
+        {autonomousProcessing && (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-700">
+            <Loader2 className="size-4 animate-spin" />
+            Alter is processing suggestions one by one in the background.
+          </div>
+        )}
         <SuggestionCards
           suggestions={mergedSuggestions}
           mode={mode}
@@ -282,4 +443,81 @@ export function DashboardShell({ userId }: { userId: string }) {
       )}
     </div>
   );
+}
+
+function getModeAutonomyLevel(
+  autonomy: DashboardData["autonomy"],
+  mode: "PERSONAL" | "PROFESSIONAL"
+): AutonomyLevel {
+  if (!autonomy) return "OBSERVER";
+
+  if (mode === "PERSONAL") {
+    return (autonomy.personalMode as AutonomyLevel) ?? "OBSERVER";
+  }
+
+  return (autonomy.professionalMode as AutonomyLevel) ?? "OBSERVER";
+}
+
+function getPersistedSuggestionPresentation(
+  suggestion: {
+  status: string;
+  reason: string;
+  actions?: Array<{ payload: Record<string, unknown> }>;
+  },
+  modeAutonomy: AutonomyLevel
+): {
+  presentation: "notification";
+  showAcceptDecline: false;
+  helperText: string;
+  badgeLabel: string;
+  footerText?: string;
+} | null {
+  const decisionComment = suggestion.actions
+    ?.map((action) => action.payload?.decisionComment)
+    .find((value): value is string => typeof value === "string");
+
+  if (suggestion.status === "ACTED") {
+    return {
+      presentation: "notification",
+      showAcceptDecline: false,
+      helperText:
+        decisionComment ?? `Accepted because ${suggestion.reason}`,
+      badgeLabel: "Accepted",
+      footerText: "Alter accepted this for you",
+    };
+  }
+
+  if (suggestion.status === "ACCEPTED") {
+    return {
+      presentation: "notification",
+      showAcceptDecline: false,
+      helperText:
+        decisionComment ?? `Accepted because ${suggestion.reason}`,
+      badgeLabel: "Accepted",
+      footerText: "You accepted this suggestion",
+    };
+  }
+
+  if (suggestion.status === "DECLINED") {
+    return {
+      presentation: "notification",
+      showAcceptDecline: false,
+      helperText:
+        decisionComment ??
+        "Declined because Alter did not have enough safe detail to act on this automatically.",
+      badgeLabel: "Declined",
+      footerText: "Alter declined this for you",
+    };
+  }
+
+  if (modeAutonomy !== "AUTONOMOUS") {
+    return null;
+  }
+
+  return {
+    presentation: "notification",
+    showAcceptDecline: false,
+    helperText: "Autonomous mode: Alter is processing this suggestion now.",
+    badgeLabel: "Working",
+  };
 }

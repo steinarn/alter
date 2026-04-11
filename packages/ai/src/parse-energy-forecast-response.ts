@@ -10,6 +10,7 @@ export async function parseEnergyForecastResponse(
 ): Promise<EnergyForecastResponse> {
   const { object } = await generateObject({
     model,
+    mode: "json",
     schema: energyForecastResponseSchema,
     prompt,
   });

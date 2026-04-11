@@ -10,6 +10,7 @@ export async function parseSuggestionResponse(
 ): Promise<SuggestionResponse> {
   const { object } = await generateObject({
     model,
+    mode: "json",
     schema: suggestionResponseSchema,
     prompt,
   });

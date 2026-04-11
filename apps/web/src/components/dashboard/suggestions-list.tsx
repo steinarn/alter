@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -48,15 +48,22 @@ const STATUS_META: Record<
 function SuggestionRow({
   suggestion,
   onStatusChange,
+  highlighted = false,
 }: {
   suggestion: SuggestionItem;
   onStatusChange: (id: string, status: "ACCEPTED" | "DECLINED") => void;
+  highlighted?: boolean;
 }) {
   const meta = STATUS_META[suggestion.status];
   const StatusIcon = meta.icon;
 
   return (
-    <Card>
+    <Card
+      className={cn(
+        highlighted &&
+          "animate-pulse border-emerald-300 bg-emerald-50/50 shadow-sm"
+      )}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-sm">{suggestion.title}</CardTitle>
@@ -128,10 +135,256 @@ export function SuggestionsList({
     useState<SuggestionItem[]>(initialSuggestions);
   const [generating, setGenerating] = useState(false);
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "ACCEPTED" | "DECLINED" | "ACTED">("ALL");
+  const [recentlyUpdatedIds, setRecentlyUpdatedIds] = useState<string[]>([]);
+  const [automationState, setAutomationState] = useState<null | {
+    mode: "PERSONAL" | "PROFESSIONAL";
+    startedAt: string;
+    jobId: string;
+    autonomyLevel: string;
+    phase: "queued" | "working" | "complete" | "stalled" | "failed";
+    failedReason?: string | null;
+  }>(null);
+  const automationAttemptsRef = useRef(0);
+  const automationCycleKey = automationState
+    ? `${automationState.mode}-${automationState.startedAt}-${automationState.autonomyLevel}`
+    : null;
+  const storageKey = `alter-suggestion-generation:${userId}`;
 
   useEffect(() => {
     setSuggestions(initialSuggestions);
   }, [initialSuggestions]);
+
+  useEffect(() => {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        mode: "PERSONAL" | "PROFESSIONAL";
+        startedAt: string;
+        jobId: string;
+        autonomyLevel: string;
+        phase: "queued" | "working" | "complete" | "stalled" | "failed";
+        failedReason?: string | null;
+      };
+
+      const ageMs = Date.now() - new Date(parsed.startedAt).getTime();
+      if (ageMs < 10 * 60 * 1000) {
+        setAutomationState(parsed);
+      } else {
+        window.localStorage.removeItem(storageKey);
+      }
+    } catch {
+      window.localStorage.removeItem(storageKey);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!automationState) {
+      window.localStorage.removeItem(storageKey);
+      return;
+    }
+
+    window.localStorage.setItem(storageKey, JSON.stringify(automationState));
+  }, [automationState, storageKey]);
+
+  useEffect(() => {
+    if (!automationState) return;
+
+    let cancelled = false;
+    const currentAutomationState = automationState;
+    let intervalId: number | null = null;
+    let completionTimeoutId: number | null = null;
+
+    async function poll() {
+      const jobRes = await fetch(
+        `/api/users/${userId}/suggestions/jobs/${currentAutomationState.jobId}`
+      );
+      if (!jobRes.ok || cancelled) return;
+
+      const job = (await jobRes.json()) as {
+        state: string;
+        failedReason?: string | null;
+      };
+
+      let fresh: SuggestionItem[] = [];
+
+      const shouldFetchSuggestions =
+        currentAutomationState.autonomyLevel === "AUTONOMOUS" ||
+        job.state === "completed" ||
+        job.state === "failed";
+
+      if (shouldFetchSuggestions) {
+        const params = new URLSearchParams({ mode: currentAutomationState.mode });
+        const res = await fetch(`/api/users/${userId}/suggestions?${params}`);
+        if (!res.ok || cancelled) return;
+
+        const data = await res.json();
+        const nextSuggestions: SuggestionItem[] = (
+          data.suggestions as Array<Record<string, unknown>>
+        ).map(mapSuggestionItem);
+
+        if (cancelled) return;
+
+        setSuggestions((prev) => {
+          const byId = new Map(prev.map((item) => [item.id, item]));
+          for (const item of nextSuggestions) {
+            byId.set(item.id, item);
+          }
+          return Array.from(byId.values()).sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        });
+
+        const startedAtMs =
+          new Date(currentAutomationState.startedAt).getTime() - 1000;
+        fresh = nextSuggestions.filter(
+          (suggestion) => new Date(suggestion.createdAt).getTime() >= startedAtMs
+        );
+      }
+
+      if (fresh.length === 0) {
+        if (job.state === "failed") {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId);
+          }
+          setAutomationState((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  phase: "failed",
+                  failedReason:
+                    job.failedReason ??
+                    "Suggestion generation failed in the worker.",
+                }
+              : prev
+          );
+          return;
+        }
+
+        if (
+          job.state === "completed" &&
+          currentAutomationState.autonomyLevel !== "AUTONOMOUS"
+        ) {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId);
+          }
+          setAutomationState((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  phase: "failed",
+                  failedReason:
+                    "The job completed, but no new suggestions were persisted.",
+                }
+              : prev
+          );
+          return;
+        }
+
+        automationAttemptsRef.current += 1;
+        if (automationAttemptsRef.current >= 20) {
+          if (intervalId !== null) {
+            window.clearInterval(intervalId);
+          }
+          setAutomationState((prev) => (prev ? { ...prev, phase: "stalled" } : prev));
+        }
+        return;
+      }
+
+      if (currentAutomationState.autonomyLevel !== "AUTONOMOUS") {
+        if (intervalId !== null) {
+          window.clearInterval(intervalId);
+        }
+
+        const freshIds = fresh.map((suggestion) => suggestion.id);
+        if (freshIds.length > 0) {
+          setRecentlyUpdatedIds(freshIds);
+          setAutomationState((prev) =>
+            prev ? { ...prev, phase: "complete" } : prev
+          );
+
+          completionTimeoutId = window.setTimeout(() => {
+            setRecentlyUpdatedIds((prev) =>
+              prev.filter((id) => !freshIds.includes(id))
+            );
+            setAutomationState((prev) =>
+              prev?.phase === "complete" ? null : prev
+            );
+          }, 3500);
+          return;
+        }
+
+        if (intervalId !== null) {
+          window.clearInterval(intervalId);
+        }
+        setAutomationState(null);
+        return;
+      }
+
+      const pending = fresh.some((suggestion) => suggestion.status === "PENDING");
+      const completedIds = fresh
+        .filter((suggestion) =>
+          suggestion.status === "ACTED" || suggestion.status === "DECLINED"
+        )
+        .map((suggestion) => suggestion.id);
+
+      if (pending && automationAttemptsRef.current < 19) {
+        automationAttemptsRef.current += 1;
+        setAutomationState((prev) =>
+          prev && prev.phase !== "working"
+            ? {
+                ...prev,
+                phase: "working",
+              }
+            : prev
+        );
+        return;
+      }
+
+      if (completedIds.length > 0) {
+        if (intervalId !== null) {
+          window.clearInterval(intervalId);
+        }
+        setRecentlyUpdatedIds(completedIds);
+        setAutomationState((prev) =>
+          prev ? { ...prev, phase: "complete" } : prev
+        );
+
+        completionTimeoutId = window.setTimeout(() => {
+          setRecentlyUpdatedIds((prev) =>
+            prev.filter((id) => !completedIds.includes(id))
+          );
+          setAutomationState((prev) =>
+            prev?.phase === "complete" ? null : prev
+          );
+        }, 3500);
+        return;
+      }
+
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+      setAutomationState(null);
+    }
+
+    void poll();
+
+    intervalId = window.setInterval(() => {
+      void poll();
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+      if (completionTimeoutId !== null) {
+        window.clearTimeout(completionTimeoutId);
+      }
+    };
+  }, [automationCycleKey, userId]);
 
   async function handleStatusChange(
     id: string,
@@ -159,25 +412,26 @@ export function SuggestionsList({
       });
       if (res.ok) {
         const data = await res.json();
-        const newSuggestions: SuggestionItem[] = data.suggestions.map(
-          (s: Record<string, unknown>) => ({
-            id: s.id as string,
-            title: s.title as string,
-            description: s.description as string,
-            reason: s.reason as string,
-            mode: s.mode as "PERSONAL" | "PROFESSIONAL",
-            status: s.status as "PENDING",
-            autonomyLevelRequired: s.autonomyLevelRequired as string,
-            createdAt: (s.createdAt as string) ?? new Date().toISOString(),
-            actions: ((s.actions as Array<Record<string, unknown>>) ?? []).map(
-              (a) => ({
-                actionType: a.actionType as string,
-                executedAt: (a.executedAt as string) ?? null,
-              })
-            ),
-          })
-        );
-        setSuggestions((prev) => [...newSuggestions, ...prev]);
+        if (Array.isArray(data.suggestions)) {
+          const newSuggestions: SuggestionItem[] = data.suggestions.map(
+            mapSuggestionItem
+          );
+          setSuggestions((prev) => [...newSuggestions, ...prev]);
+          return;
+        }
+
+        if (data.queued) {
+          automationAttemptsRef.current = 0;
+          setAutomationState({
+            mode,
+            startedAt: (data.startedAt as string) ?? new Date().toISOString(),
+            jobId: (data.jobId as string) ?? "",
+            autonomyLevel: (data.autonomyLevel as string) ?? "OBSERVER",
+            phase:
+              data.autonomyLevel === "AUTONOMOUS" ? "working" : "queued",
+            failedReason: null,
+          });
+        }
       }
     } finally {
       setGenerating(false);
@@ -229,6 +483,57 @@ export function SuggestionsList({
 
   return (
     <div className="space-y-4">
+      {automationState && (
+        <Card
+          className={cn(
+            "border-dashed transition-colors",
+            automationState.phase === "complete" &&
+              "border-emerald-300 bg-emerald-50/60",
+            automationState.phase === "failed" &&
+              "border-destructive/30 bg-destructive/5",
+            automationState.phase === "stalled" &&
+              "border-amber-300 bg-amber-50/60"
+          )}
+        >
+          <CardContent className="flex items-start gap-3 py-4">
+            {automationState.phase === "complete" ? (
+              <Zap className="mt-0.5 size-4 text-emerald-600" />
+            ) : automationState.phase === "failed" ? (
+              <XCircle className="mt-0.5 size-4 text-destructive" />
+            ) : automationState.phase === "stalled" ? (
+              <Clock className="mt-0.5 size-4 text-amber-600" />
+            ) : (
+              <Loader2 className="mt-0.5 size-4 animate-spin text-primary" />
+            )}
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                {automationState.phase === "complete"
+                  ? automationState.autonomyLevel === "AUTONOMOUS"
+                    ? "Alter finished the autonomous pass."
+                    : "Alter finished generating new suggestions."
+                  : automationState.phase === "failed"
+                    ? "Suggestion generation failed."
+                  : automationState.phase === "stalled"
+                    ? "Suggestions are queued, but the worker has not finished yet."
+                    : automationState.autonomyLevel === "AUTONOMOUS"
+                      ? "Alter is reviewing and acting on suggestions in the background."
+                      : "Generating suggestions in the background."}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {automationState.phase === "complete"
+                  ? "Updated suggestions are highlighted below."
+                  : automationState.phase === "failed"
+                    ? automationState.failedReason ??
+                      "The worker did not persist any new suggestions."
+                  : automationState.phase === "stalled"
+                    ? "Keep the worker running to see suggestions move out of pending."
+                    : `Mode: ${automationState.mode.toLowerCase()}.`}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-1">
@@ -290,10 +595,28 @@ export function SuggestionsList({
               key={s.id}
               suggestion={s}
               onStatusChange={handleStatusChange}
+              highlighted={recentlyUpdatedIds.includes(s.id)}
             />
           ))
         )}
       </div>
     </div>
   );
+}
+
+function mapSuggestionItem(s: Record<string, unknown>): SuggestionItem {
+  return {
+    id: s.id as string,
+    title: s.title as string,
+    description: s.description as string,
+    reason: s.reason as string,
+    mode: s.mode as "PERSONAL" | "PROFESSIONAL",
+    status: s.status as "PENDING" | "ACCEPTED" | "DECLINED" | "ACTED",
+    autonomyLevelRequired: s.autonomyLevelRequired as string,
+    createdAt: (s.createdAt as string) ?? new Date().toISOString(),
+    actions: ((s.actions as Array<Record<string, unknown>>) ?? []).map((a) => ({
+      actionType: a.actionType as string,
+      executedAt: (a.executedAt as string) ?? null,
+    })),
+  };
 }

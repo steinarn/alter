@@ -39,6 +39,11 @@ export function AutonomySettings({ userId, initial }: AutonomySettingsProps) {
   } | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    setPersonalMode(initial?.personalMode ?? "OBSERVER");
+    setProfessionalMode(initial?.professionalMode ?? "OBSERVER");
+  }, [initial]);
+
   const persist = useCallback(
     async (patch: Partial<AutonomyData>) => {
       setSaving(true);

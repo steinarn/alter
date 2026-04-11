@@ -1,7 +1,10 @@
 import type { Job } from "bullmq";
-import { PrismaClient, Prisma } from "@alter/db";
+import { PrismaClient } from "@alter/db";
 import { generateSuggestions } from "@alter/ai";
-import { filterSuggestionsByAutonomy } from "@alter/domain";
+import {
+  filterSuggestionsByAutonomy,
+  getAutonomyLevelForMode,
+} from "@alter/domain";
 import type { SuggestionsGeneratePayload } from "../types";
 import { suggestionExecuteQueue } from "../queues";
 
@@ -71,7 +74,7 @@ export async function processSuggestionsGenerate(
           actions: {
             create: {
               actionType: s.actionType,
-              payload: s.actionPayload as Prisma.InputJsonValue,
+              payload: JSON.parse(JSON.stringify(s.actionPayload)),
             },
           },
         },
@@ -81,7 +84,7 @@ export async function processSuggestionsGenerate(
   );
 
   // Check for autonomous execution
-  const autonomyLevel = user.autonomySetting?.level ?? "OBSERVER";
+  const autonomyLevel = getAutonomyLevelForMode(user.autonomySetting, mode);
   const criteria = created.map((s) => ({
     title: s.title,
     description: s.description,
@@ -97,7 +100,7 @@ export async function processSuggestionsGenerate(
 
   const filtered = filterSuggestionsByAutonomy(
     criteria,
-    autonomyLevel as "OBSERVER" | "ADVISOR" | "COPILOT" | "AUTONOMOUS"
+    autonomyLevel
   );
 
   // Enqueue auto-execution for autonomous suggestions

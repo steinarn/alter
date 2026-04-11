@@ -31,6 +31,10 @@ interface FilteredSuggestion {
   priority: number;
   presentation: Presentation;
   showAcceptDecline: boolean;
+  helperText?: string;
+  badgeLabel?: string;
+  highlighted?: boolean;
+  footerText?: string;
 }
 
 const PRESENTATION_META: Record<
@@ -89,9 +93,24 @@ function SuggestionCard({
 }) {
   const meta = PRESENTATION_META[suggestion.presentation];
   const Icon = meta.icon;
+  const isPreviewAction =
+    !suggestion.id &&
+    (suggestion.presentation === "action" || suggestion.presentation === "draft");
+  const helperText = isPreviewAction
+    ? "Preview only: this suggestion has not been persisted yet, so there is nothing to accept or decline."
+    : suggestion.helperText ?? meta.helper;
+  const badgeLabel = isPreviewAction
+    ? "Preview"
+    : suggestion.badgeLabel ?? meta.label;
 
   return (
-    <Card className={meta.cardClass}>
+    <Card
+      className={cn(
+        meta.cardClass,
+        suggestion.highlighted &&
+          "animate-pulse border-emerald-300 shadow-sm"
+      )}
+    >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -99,7 +118,7 @@ function SuggestionCard({
             <CardTitle className="text-sm">{suggestion.title}</CardTitle>
           </div>
           <Badge variant="secondary" className="shrink-0 text-[10px]">
-            {meta.label}
+            {badgeLabel}
           </Badge>
         </div>
         <CardDescription className="text-xs">
@@ -113,7 +132,7 @@ function SuggestionCard({
             meta.bodyClass
           )}
         >
-          {meta.helper}
+          {helperText}
         </div>
         <p className="text-xs text-muted-foreground">
           <span className="font-medium">Why:</span> {suggestion.reason}
@@ -127,13 +146,14 @@ function SuggestionCard({
           </Badge>
         </div>
 
-        {suggestion.presentation === "action" && suggestion.showAcceptDecline && (
+        {suggestion.presentation === "action" &&
+          suggestion.showAcceptDecline &&
+          suggestion.id && (
           <div className="flex gap-2">
             <Button
               size="sm"
               className="h-7 gap-1 text-xs"
               onClick={() => suggestion.id && onAccept?.(suggestion.id)}
-              disabled={!suggestion.id}
             >
               <CheckCircle2 className="size-3" />
               Accept
@@ -143,7 +163,6 @@ function SuggestionCard({
               variant="outline"
               className="h-7 gap-1 text-xs"
               onClick={() => suggestion.id && onDecline?.(suggestion.id)}
-              disabled={!suggestion.id}
             >
               <XCircle className="size-3" />
               Decline
@@ -151,13 +170,14 @@ function SuggestionCard({
           </div>
         )}
 
-        {suggestion.presentation === "draft" && suggestion.showAcceptDecline && (
+        {suggestion.presentation === "draft" &&
+          suggestion.showAcceptDecline &&
+          suggestion.id && (
           <div className="flex gap-2">
             <Button
               size="sm"
               className="h-7 gap-1 text-xs"
               onClick={() => suggestion.id && onAccept?.(suggestion.id)}
-              disabled={!suggestion.id}
             >
               <CheckCircle2 className="size-3" />
               Confirm
@@ -167,7 +187,6 @@ function SuggestionCard({
               variant="outline"
               className="h-7 gap-1 text-xs"
               onClick={() => suggestion.id && onDecline?.(suggestion.id)}
-              disabled={!suggestion.id}
             >
               <XCircle className="size-3" />
               Decline
@@ -175,10 +194,10 @@ function SuggestionCard({
           </div>
         )}
 
-        {suggestion.presentation === "notification" && (
+        {suggestion.presentation === "notification" && suggestion.footerText && (
           <p className="flex items-center gap-1 text-xs font-medium text-emerald-600">
             <Zap className="size-3" />
-            Alter acted on this for you
+            {suggestion.footerText}
           </p>
         )}
       </CardContent>

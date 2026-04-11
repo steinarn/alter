@@ -70,14 +70,14 @@ describe("filterSuggestionsByAutonomy", () => {
     expect(result[0].showAcceptDecline).toBe(false);
   });
 
-  it("keeps ADVISOR suggestions as action even in AUTONOMOUS mode", () => {
+  it("auto-handles lower-threshold suggestions in AUTONOMOUS mode", () => {
     const suggestions = [
       makeSuggestion({ autonomyLevelRequired: "ADVISOR" }),
     ];
 
     const result = filterSuggestionsByAutonomy(suggestions, "AUTONOMOUS");
-    // ADVISOR required rank (1) ≤ AUTONOMOUS user rank (3) → effective rank is 1 → action
-    expect(result[0].presentation).toBe("action");
+    expect(result[0].presentation).toBe("notification");
+    expect(result[0].showAcceptDecline).toBe(false);
   });
 
   it("preserves original suggestion fields", () => {

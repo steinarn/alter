@@ -11,6 +11,7 @@ export async function parsePersonaResponse(
 
   const { object } = await generateObject({
     model,
+    mode: "json",
     schema: personaResponseSchema,
     prompt: `You are Alter — an AI that builds persona cards from onboarding conversations.
 
