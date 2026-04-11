@@ -7,6 +7,7 @@ import {
   FileEdit,
   Zap,
   ArrowRight,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -117,38 +118,49 @@ export default async function Home() {
         )}
       </div>
 
-      {mockProfilesEnabled && (
-        <Card className="w-full max-w-3xl border-dashed bg-muted/25">
-          <CardContent className="space-y-3 pt-6 text-center">
-            <div>
-              <p className="text-sm font-semibold">Demo Mode</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Show how Alter adapts across different people, boundaries, and
-                autonomy levels without redoing onboarding every time.
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {demoProfiles.map((profile) => (
-                <span
-                  key={profile.id}
-                  className="rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground"
-                >
-                  {profile.label}
-                </span>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Watch Demo Personas to open demo mode, then use <span className="font-medium text-foreground">Switch User</span> to swap personas live.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {(mockProfilesEnabled || hasCompletedOnboarding) && (
+        <details className="w-full max-w-3xl rounded-xl border border-dashed bg-muted/20 px-5 py-4">
+          <summary className="flex cursor-pointer list-none items-center justify-center gap-2 text-sm font-medium text-muted-foreground marker:content-none">
+            <HelpCircle className="size-4" />
+            Presentation Notes
+          </summary>
 
-      {hasCompletedOnboarding && (
-        <p className="max-w-lg text-center text-sm text-muted-foreground">
-          Running onboarding again will replace the current persona card with a
-          newly generated one.
-        </p>
+          <div className="mt-4 space-y-4 text-center">
+            {mockProfilesEnabled && (
+              <Card className="border-dashed bg-muted/25">
+                <CardContent className="space-y-3 pt-6 text-center">
+                  <div>
+                    <p className="text-sm font-semibold">Demo Mode</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Show how Alter adapts across different people, boundaries, and
+                      autonomy levels without redoing onboarding every time.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {demoProfiles.map((profile) => (
+                      <span
+                        key={profile.id}
+                        className="rounded-full border bg-background px-3 py-1 text-xs text-muted-foreground"
+                      >
+                        {profile.label}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Watch Demo Personas to open demo mode, then use <span className="font-medium text-foreground">Switch User</span> to swap personas live.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasCompletedOnboarding && (
+              <p className="text-sm text-muted-foreground">
+                Running onboarding again will replace the current persona card with a
+                newly generated one.
+              </p>
+            )}
+          </div>
+        </details>
       )}
     </main>
   );
