@@ -83,7 +83,7 @@ export default async function Home() {
       <div className="flex flex-wrap justify-center gap-4">
         {hasCompletedOnboarding ? (
           <Button asChild size="lg">
-            <Link href="/dashboard">
+            <Link href="/live-dashboard">
               Go to Dashboard
               <ArrowRight className="ml-1 size-4" />
             </Link>
@@ -98,7 +98,7 @@ export default async function Home() {
         )}
         {mockProfilesEnabled && (
           <Button asChild variant="secondary" size="lg">
-            <Link href="/dashboard">
+            <Link href="/demo-personas">
               Watch Demo Personas
             </Link>
           </Button>
@@ -138,7 +138,7 @@ export default async function Home() {
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              Open the dashboard, then use <span className="font-medium text-foreground">Switch User</span> to swap personas live.
+              Watch Demo Personas to open demo mode, then use <span className="font-medium text-foreground">Switch User</span> to swap personas live.
             </p>
           </CardContent>
         </Card>

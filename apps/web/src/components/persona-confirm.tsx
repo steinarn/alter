@@ -122,8 +122,11 @@ export function PersonaConfirm({
                 <Zap className="size-4 text-green-600" />
                 Energisers
               </div>
-              {energizers.map((d) => (
-                <div key={d.label} className="ml-6 space-y-0.5">
+              {energizers.map((d, index) => (
+                <div
+                  key={`${d.driverType}-${d.label}-${index}`}
+                  className="ml-6 space-y-0.5"
+                >
                   <p className="text-sm font-medium">{d.label}</p>
                   <p className="text-xs text-muted-foreground">
                     {d.description}
@@ -138,8 +141,11 @@ export function PersonaConfirm({
                 <BatteryLow className="size-4 text-red-500" />
                 Drainers
               </div>
-              {drainers.map((d) => (
-                <div key={d.label} className="ml-6 space-y-0.5">
+              {drainers.map((d, index) => (
+                <div
+                  key={`${d.driverType}-${d.label}-${index}`}
+                  className="ml-6 space-y-0.5"
+                >
                   <p className="text-sm font-medium">{d.label}</p>
                   <p className="text-xs text-muted-foreground">
                     {d.description}
